@@ -1,7 +1,7 @@
 using Parameters,BlockCodes
 import BlockCodes.decode
 
-@with_kw struct NGDSF <: Decoder
+@with_kw mutable struct NGDSF <: Decoder
     code::BlockCode
     modulation::Modulation
     chan::ComplexChannel

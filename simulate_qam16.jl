@@ -10,7 +10,8 @@ m    = QAM(16)
 # NBLDPC Code Definition
 code = BlockCode(GF(16),"codes/204.102.3.6.16.csv")
 
-T=480
+T    = 480
+SNR  = 6.0
 
 # Initialize log for NBLDPC code
 experiment = Experiment(code=code,m=m)
@@ -21,6 +22,10 @@ Noisy Gradient Descent Symbol Flipping experiment on QAM16 AWGN channel.
 Parameters chosen to replicate Zinnia's Matlab implementation. 
 """
 
+result_filename = joinpath("results","$(experiment.name)_$(experiment.date)_$(experiment.commit).ser")
+if isfile(result_filename)
+    experiment=deserialize(result_filename)
+end
 
 # Macro for NGDSF decoder declaration. Using a macro because
 # there are parameters that depend on channel SNR, but most
@@ -43,9 +48,29 @@ end
 
 
 
+function setup(sym,val)
+    if sym == :SNR
+        chan  = ComplexAWGN(val,16,code.R,m.Es)
+        dec   = @dec(chan)
+    else
+        chan  = ComplexAWGN(SNR,16,code.R,m.Es)
+        dec   = @dec(chan)
+        eval(:($(dec).$(sym)=$(val)))
+    end
+    
+    return chan,dec
+end
+
+
+function save(e::Experiment)
+    serialize(result_filename,e)
+end
+
+
 #========================================================
  MAIN SIMULATION LOOP
 ========================================================#
+#=
 println("Simulating $(experiment.name)")
     
 for SNR in [9.0,9.5,10.0,10.5,11.0]
@@ -61,6 +86,7 @@ for SNR in [9.0,9.5,10.0,10.5,11.0]
 
     serialize(joinpath("results","$(experiment.name)_$(typeof(m))_$(m.field.Q)_$(typeof(chan))_$(Dates.today()).ser"),experiment)
 end
+=#
 
 
 
