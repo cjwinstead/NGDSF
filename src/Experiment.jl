@@ -33,7 +33,7 @@ function githash()
         return ""
     end
 
-    return run(`$git rev-parse --short HEAD`)
+    return readchomp(`$git rev-parse --short HEAD`)
 end
 
 
