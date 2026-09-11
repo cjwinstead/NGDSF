@@ -1,4 +1,5 @@
 using Plots,Dates,Git,Suppressor
+import Base.print
 
 struct TestPoint
     chan::ChannelModel
@@ -14,8 +15,43 @@ end
     description=String("none")    
     notes=String("")
     code::BlockCode
-    m::Modulation
+    modulation::Modulation
     data=Vector{TestPoint}()
+end
+
+
+function report(chan::ComplexAWGN)
+    println(typeof(chan)," Q=",chan.Q," Eb/N₀=",chan.Eb_N₀," R=",chan.R)
+end
+
+function report(dec::Decoder)
+    print(typeof(dec),":",typeof(dec.modulation),"  params:")
+    print("params:")
+    for p in fieldnames(typeof(dec))
+        val = getfield(dec,p)
+        if typeof(val) <: Number
+            print(" ",string(p),"=",string(val))
+        end
+    end
+end
+
+
+function report(ect::ErrorCounter)
+    for f in [:total_words,:word_errors,:bit_errors,:BER,:WER]
+        println(string(f)," ",getfield(ect,f))
+    end
+end
+
+
+function report(tp::TestPoint)
+    println('-'^24," Test Point ",'-'^24)
+    report(tp.chan)
+    report(tp.dec)
+    println("....... Coded Error Counter ......")
+    report(tp.ec)
+    println("...... Uncoded Error Counter ......")
+    report(tp.uc)
+    println('-'^60)
 end
 
 
@@ -37,33 +73,19 @@ function githash()
 end
 
 
-function runSweep!(e::Experiment,sym::Symbol,vals::Vector)
+function runSweep!(e::Experiment,sym::Symbol,vals::Vector,setup)
     for v in vals
         chan,dec=setup(sym,v)
-        ec,uc = simulate(e.code,e.m,chan,dec;maxwords=100000)
-        println("At $(string(sym))=$(v)  BER=$(ec.BER)")
-        push!(e.data,TestPoint(chan,dec,ec,uc))
+        ec,uc = simulate(e.code,e.modulation,chan,dec;maxwords=10,errwords=10)
+        println(ec)
+        println(uc)
+        tp = TestPoint(chan,dec,ec,uc)
+        report(tp)
+
+        push!(e.data,tp)
         save(experiment)
     end    
 end
-
-
-#=    
-function runSimulation(e::Experiment)    
-for SNR in [9.0,9.5,10.0,10.5,11.0]
-
-    # Simulate 
-    chan  = ComplexAWGN(SNR,16,code.R,m.Es)
-    dec   = @dec(chan)
-    ec,uc = simulate(code,m,chan,dec;maxwords=100000)
-
-    # Save results to log
-    println("At SNR=$(SNR)  BER=$(ec.BER)")
-    push!(experiment.data,TestPoint(SNR,dec,ec,uc))
-
-    serialize(joinpath("results","$(experiment.name)_$(typeof(m))_$(m.field.Q)_$(typeof(chan))_$(Dates.today()).ser"),experiment)
-end
-=#
 
 
 macro SNR(s)
